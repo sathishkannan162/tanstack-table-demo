@@ -199,6 +199,9 @@ export const DraggableTableHeader = memo(function DraggableTableHeader({
             {header.column.id === "isActive" ? (
               <select
                 value={(header.column.getFilterValue() ?? "") as string}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
                 onChange={(e) => {
                   header.column.setFilterValue(
                     e.target.value === ""
@@ -215,6 +218,9 @@ export const DraggableTableHeader = memo(function DraggableTableHeader({
             ) : (
               <input
                 value={(header.column.getFilterValue() ?? "") as string}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
                 onChange={(e) => header.column.setFilterValue(e.target.value)}
                 placeholder={`Filter ${header.column.id}...`}
                 className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
