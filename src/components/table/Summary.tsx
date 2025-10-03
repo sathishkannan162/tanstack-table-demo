@@ -63,11 +63,29 @@ export function Summary({
     summaries.push(`Right pinned: ${rightPinned.join(", ")}`);
   }
 
+  // Column order summary (visible columns in current order)
+  const stateOrder = (table.getState().columnOrder ?? []) as string[];
+  if (stateOrder.length > 0) {
+    const visibleIds = new Set(table.getVisibleLeafColumns().map((c) => c.id));
+    const idToCol = new Map(table.getAllLeafColumns().map((c) => [c.id, c]));
+    const labels = stateOrder
+      .filter((id) => visibleIds.has(id))
+      .map((id) => {
+        const col = idToCol.get(id);
+        if (!col) return String(id);
+        const header = col.columnDef.header as unknown;
+        return typeof header === "string" ? (header as string) : col.id;
+      });
+    if (labels.length > 0) {
+      summaries.push(`Column order: ${labels.join(", ")}`);
+    }
+  }
+
   return (
     <div className="px-6 py-3 bg-gray-100 border-t border-gray-200">
       <div className="text-sm text-gray-700">
         {summaries.length === 0 ? (
-          <span>No filters, sorting, or pinning applied</span>
+          <span>No filters, sorting, pinning, or reordering applied</span>
         ) : (
           <span>Applied: {summaries.join(", ")}</span>
         )}

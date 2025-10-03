@@ -144,6 +144,46 @@ export function Table({ data }: TableProps) {
         setGlobalFilter={setGlobalFilter}
       />
 
+      {/* Column Resize Controls */}
+      <div className="mb-4 flex items-center gap-4 text-sm text-gray-700">
+        <label className="flex items-center gap-2">
+          <span>Resize mode</span>
+          <select
+            value={columnResizeMode}
+            onChange={(e) =>
+              setColumnResizeMode(e.target.value as ColumnResizeMode)
+            }
+            className="px-2 py-1 border border-gray-300 rounded bg-white"
+          >
+            <option value="onChange">onChange</option>
+            <option value="onEnd">onEnd</option>
+          </select>
+        </label>
+
+        <label className="flex items-center gap-2">
+          <span>Direction</span>
+          <select
+            value={columnResizeDirection}
+            onChange={(e) =>
+              setColumnResizeDirection(e.target.value as ColumnResizeDirection)
+            }
+            className="px-2 py-1 border border-gray-300 rounded bg-white"
+          >
+            <option value="ltr">ltr</option>
+            <option value="rtl">rtl</option>
+          </select>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => table.resetColumnSizing()}
+          className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50"
+          title="Reset column widths"
+        >
+          Reset widths
+        </button>
+      </div>
+
       <div className="bg-white rounded-lg shadow">
         <div className="overflow-x-auto">
           {/* DndContext must not be nested directly inside <table> */}
