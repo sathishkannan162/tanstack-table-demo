@@ -5,6 +5,8 @@ import type {
   ColumnPinningState,
   PaginationState,
   SortingState,
+  ColumnResizeMode,
+  ColumnResizeDirection,
 } from "@tanstack/react-table";
 import {
   createColumnHelper,
@@ -36,6 +38,11 @@ export function Table({ data }: TableProps) {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  const [columnResizeMode, setColumnResizeMode] =
+    useState<ColumnResizeMode>("onChange");
+  const [columnResizeDirection, setColumnResizeDirection] =
+    useState<ColumnResizeDirection>("ltr");
 
   const columns = [
     columnHelper.accessor("id", {
@@ -117,8 +124,36 @@ export function Table({ data }: TableProps) {
     getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: "includesString",
     enableColumnPinning: true,
+    enableColumnResizing: true,
+    columnResizeMode,
+    columnResizeDirection,
+    defaultColumn: {
+      size: 200,
+      minSize: 60,
+      maxSize: 600,
+    },
     debugTable: true,
   });
+
+  const getPinnedOffset = (column: any) => {
+    if (column.getIsPinned && column.getIsPinned() === "left") {
+      let offset = 0;
+      for (const c of table.getLeftLeafColumns()) {
+        if (c.id === column.id) break;
+        offset += c.getSize();
+      }
+      return offset;
+    }
+    if (column.getIsPinned && column.getIsPinned() === "right") {
+      let offset = 0;
+      for (const c of table.getRightLeafColumns()) {
+        if (c.id === column.id) break;
+        offset += c.getSize();
+      }
+      return offset;
+    }
+    return 0;
+  };
 
   return (
     <div className="w-full">
@@ -156,7 +191,7 @@ export function Table({ data }: TableProps) {
 
       <div className="bg-white rounded-lg shadow">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200" style={{ width: table.getTotalSize() }}>
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -164,7 +199,7 @@ export function Table({ data }: TableProps) {
                   <th
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
+                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 relative ${
                       header.column.getCanSort() ? "cursor-pointer" : ""
                     } ${header.column.getIsPinned() ? "sticky z-10 bg-gray-50 shadow-lg" : ""} ${
                       header.column.getIsPinned() === "left" ? "left-0 border-r border-gray-300" : ""
@@ -172,8 +207,8 @@ export function Table({ data }: TableProps) {
                       header.column.getIsPinned() === "right" ? "right-0 border-l border-gray-300" : ""
                     }`}
                     style={{
-                      left: header.column.getIsPinned() === "left" ? `${header.index * 200}px` : undefined,
-                      right: header.column.getIsPinned() === "right" ? `${(table.getVisibleLeafColumns().length - 1 - header.index) * 200}px` : undefined,
+                      left: header.column.getIsPinned() === "left" ? `${getPinnedOffset(header.column)}px` : undefined,
+                      right: header.column.getIsPinned() === "right" ? `${getPinnedOffset(header.column)}px` : undefined,
                       width: header.getSize(),
                     }}
                   >
@@ -229,11 +264,39 @@ export function Table({ data }: TableProps) {
                           </>
                         ) : null}
                         {header.column.getCanResize() ? (
-                          <div
-                            className="w-2 h-4 cursor-col-resize bg-transparent hover:bg-gray-300 mx-1 -mr-2"
+                          <button
+                            type="button"
+                            aria-label={`Resize ${String(typeof header.column.columnDef.header === "string" ? header.column.columnDef.header : header.column.id)} column`}
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              const step = e.shiftKey ? 20 : 10;
+                              const current = header.getSize();
+                              if (e.key === "ArrowLeft") {
+                                e.preventDefault();
+                                const next = Math.max(current - step, 60);
+                                table.setColumnSizing((sizing) => ({
+                                  ...sizing,
+                                  [header.column.id]: next,
+                                }));
+                              } else if (e.key === "ArrowRight") {
+                                e.preventDefault();
+                                const next = Math.min(current + step, 600);
+                                table.setColumnSizing((sizing) => ({
+                                  ...sizing,
+                                  [header.column.id]: next,
+                                }));
+                              }
+                            }}
+                            onDoubleClick={() => header.column.resetSize()}
                             onMouseDown={header.getResizeHandler()}
                             onTouchStart={header.getResizeHandler()}
-                            aria-hidden="true"
+                            className={`resizer ${columnResizeDirection} ${header.column.getIsResizing() ? "isResizing" : ""}`}
+                            style={{
+                              transform:
+                                columnResizeMode === "onEnd" && header.column.getIsResizing()
+                                  ? `translateX(${(columnResizeDirection === "rtl" ? -1 : 1) * (table.getState().columnSizingInfo.deltaOffset ?? 0)}px)`
+                                  : undefined,
+                            }}
                           />
                         ) : null}
                       </div>
@@ -304,8 +367,8 @@ export function Table({ data }: TableProps) {
                       cell.column.getIsPinned() === "right" ? "right-0 border-l border-gray-300" : ""
                     }`}
                     style={{
-                      left: cell.column.getIsPinned() === "left" ? `${cell.column.getPinnedIndex() * 200}px` : undefined,
-                      right: cell.column.getIsPinned() === "right" ? `${(table.getVisibleLeafColumns().length - 1 - cell.column.getPinnedIndex()) * 200}px` : undefined,
+                      left: cell.column.getIsPinned() === "left" ? `${getPinnedOffset(cell.column)}px` : undefined,
+                      right: cell.column.getIsPinned() === "right" ? `${getPinnedOffset(cell.column)}px` : undefined,
                       width: cell.column.getSize(),
                     }}
                   >

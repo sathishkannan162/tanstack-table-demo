@@ -120,3 +120,45 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* TanStack Table column resizer styles */
+.resizer {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  border: 0;
+  padding: 0;
+}
+
+.resizer.ltr {
+  right: 0;
+}
+
+.resizer.rtl {
+  left: 0;
+}
+
+.resizer.isResizing {
+  background: #2563eb; /* blue-600 */
+  opacity: 1;
+}
+
+.resizer:focus-visible {
+  outline: 2px solid #2563eb; /* blue-600 */
+  outline-offset: -2px;
+}
+
+@media (hover: hover) {
+  .resizer {
+    opacity: 0;
+  }
+
+  th:hover > .resizer {
+    opacity: 1;
+  }
+}
