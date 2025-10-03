@@ -155,7 +155,7 @@ export function Table({ data }: TableProps) {
           >
             <table
               className="min-w-full divide-y divide-gray-200"
-              style={{ width: table.getTotalSize() }}
+              style={{ width: table.getTotalSize(), tableLayout: "fixed" }}
             >
               <thead className="bg-gray-50">
                 {table.getHeaderGroups().map((headerGroup) => (
