@@ -1,5 +1,13 @@
 "use client";
 
+import type {
+  ColumnDef,
+  ColumnFilter,
+  ColumnFiltersState,
+  FilterFn,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import {
   createColumnHelper,
   flexRender,
@@ -9,16 +17,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-
 import { useState } from "react";
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  FilterFn,
-  SortingState,
-  PaginationState,
-  ColumnFilter
-} from "@tanstack/react-table";
 import type { User } from "../lib/dummyData";
 
 const columnHelper = createColumnHelper<User>();
@@ -63,6 +62,7 @@ export function Table({ data }: TableProps) {
       header: "Department",
       cell: (info: any) => info.getValue(),
       filterFn: "includesString",
+      enableColumnFilter: true,
     }),
     columnHelper.accessor("salary", {
       header: () => "Salary",
@@ -89,6 +89,7 @@ export function Table({ data }: TableProps) {
         </span>
       ),
       filterFn: "equals",
+      enableColumnFilter: true,
     }),
   ];
 
@@ -126,7 +127,12 @@ export function Table({ data }: TableProps) {
               viewBox="0 0 24 24"
               aria-hidden="true"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
           <input
@@ -137,7 +143,8 @@ export function Table({ data }: TableProps) {
           />
         </div>
         <div className="text-sm text-gray-700">
-          Showing {table.getFilteredRowModel().rows.length} of {table.getFilteredRowModel().rows.length} rows
+          Showing {table.getFilteredRowModel().rows.length} of{" "}
+          {table.getFilteredRowModel().rows.length} rows
         </div>
       </div>
 
@@ -169,12 +176,32 @@ export function Table({ data }: TableProps) {
                     {/* Column Filter */}
                     {header.column.getCanFilter() ? (
                       <div className="mt-1">
-                        <input
-                          value={(columnFilters.find((filter) => filter.id === header.column.id)?.value as string) ?? ""}
-                          onChange={(e) => header.column.setFilterValue(e.target.value)}
-                          placeholder={`Filter ${header.column.id}...`}
-                          className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
+                        {header.column.id === "isActive" ? (
+                          <select
+                            value={
+                              (header.column.getFilterValue() ?? "") as string
+                            }
+                            onChange={(e) =>
+                              header.column.setFilterValue(e.target.value)
+                            }
+                            className="w-20 px-1 py-1 text-xs border border-gray-300 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                          >
+                            <option value="">All</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                          </select>
+                        ) : (
+                          <input
+                            value={
+                              (header.column.getFilterValue() ?? "") as string
+                            }
+                            onChange={(e) =>
+                              header.column.setFilterValue(e.target.value)
+                            }
+                            placeholder={`Filter ${header.column.id}...`}
+                            className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        )}
                       </div>
                     ) : null}
                   </th>
@@ -186,7 +213,11 @@ export function Table({ data }: TableProps) {
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className={row.index % 2 === 0 ? "bg-white" : "bg-gray-50 hover:bg-gray-100"}
+                className={
+                  row.index % 2 === 0
+                    ? "bg-white"
+                    : "bg-gray-50 hover:bg-gray-100"
+                }
               >
                 {row.getVisibleCells().map((cell) => (
                   <td
@@ -227,7 +258,8 @@ export function Table({ data }: TableProps) {
                 <span className="text-sm text-gray-700 mr-4">
                   Page{" "}
                   <strong>
-                    {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                    {table.getState().pagination.pageIndex + 1} of{" "}
+                    {table.getPageCount()}
                   </strong>
                 </span>
                 <select
