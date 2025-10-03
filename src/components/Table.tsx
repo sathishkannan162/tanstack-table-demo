@@ -1,10 +1,7 @@
 "use client";
 
 import type {
-  ColumnDef,
-  ColumnFilter,
   ColumnFiltersState,
-  FilterFn,
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
@@ -56,7 +53,8 @@ export function Table({ data }: TableProps) {
     columnHelper.accessor("phone", {
       header: "Phone",
       cell: (info: any) => info.getValue(),
-      enableColumnFilter: false,
+      filterFn: "includesString",
+      enableColumnFilter: true,
     }),
     columnHelper.accessor("department", {
       header: "Department",
@@ -143,12 +141,12 @@ export function Table({ data }: TableProps) {
           />
         </div>
         <div className="text-sm text-gray-700">
-          Showing {table.getFilteredRowModel().rows.length} of{" "}
+          Showing {table.getRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} rows
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -181,9 +179,14 @@ export function Table({ data }: TableProps) {
                             value={
                               (header.column.getFilterValue() ?? "") as string
                             }
-                            onChange={(e) =>
-                              header.column.setFilterValue(e.target.value)
-                            }
+                            onChange={(e) => {
+                              // sets true or false based on yes or no
+                              header.column.setFilterValue(
+                                e.target.value === ""
+                                  ? undefined
+                                  : e.target.value === "true",
+                              );
+                            }}
                             className="w-20 px-1 py-1 text-xs border border-gray-300 rounded text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                           >
                             <option value="">All</option>
@@ -295,6 +298,53 @@ export function Table({ data }: TableProps) {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Applied Filters and Sorting Summary */}
+        <div className="px-6 py-3 bg-gray-100 border-t border-gray-200">
+          <div className="text-sm text-gray-700">
+            {(() => {
+              const summaries: string[] = [];
+
+              // Global filter summary
+              if (globalFilter) {
+                summaries.push(`Global search: "${globalFilter}"`);
+              }
+
+              // Column filters summary
+              const columnFilterSummaries = columnFilters
+                .filter(
+                  (filter) => filter.value !== undefined && filter.value !== "",
+                )
+                .map((filter) => {
+                  let value = filter.value;
+                  if (filter.id === "isActive") {
+                    value = value ? "Yes" : "No";
+                  }
+                  return `${filter.id}: ${value}`;
+                });
+              if (columnFilterSummaries.length > 0) {
+                summaries.push(...columnFilterSummaries);
+              }
+
+              // Sorting summary
+              const sortingSummaries = sorting
+                .filter((sort) => sort.desc !== undefined)
+                .map((sort) => {
+                  const direction = sort.desc ? "Descending" : "Ascending";
+                  return `${sort.id}: ${direction}`;
+                });
+              if (sortingSummaries.length > 0) {
+                summaries.push(...sortingSummaries);
+              }
+
+              if (summaries.length === 0) {
+                return <span>No filters or sorting applied</span>;
+              }
+
+              return <span>Applied: {summaries.join(", ")}</span>;
+            })()}
           </div>
         </div>
       </div>
