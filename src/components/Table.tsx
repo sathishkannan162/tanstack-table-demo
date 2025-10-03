@@ -2,6 +2,7 @@
 
 import type {
   ColumnFiltersState,
+  ColumnPinningState,
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
@@ -26,6 +27,10 @@ interface TableProps {
 export function Table({ data }: TableProps) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+    left: [],
+    right: [],
+  });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -97,11 +102,13 @@ export function Table({ data }: TableProps) {
     state: {
       globalFilter,
       columnFilters,
+      columnPinning,
       sorting,
       pagination,
     },
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
+    onColumnPinningChange: setColumnPinning,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
@@ -109,6 +116,7 @@ export function Table({ data }: TableProps) {
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: "includesString",
+    enableColumnPinning: true,
     debugTable: true,
   });
 
@@ -146,8 +154,9 @@ export function Table({ data }: TableProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="bg-white rounded-lg shadow">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -157,19 +166,77 @@ export function Table({ data }: TableProps) {
                     onClick={header.column.getToggleSortingHandler()}
                     className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
                       header.column.getCanSort() ? "cursor-pointer" : ""
+                    } ${header.column.getIsPinned() ? "sticky z-10 bg-gray-50 shadow-lg" : ""} ${
+                      header.column.getIsPinned() === "left" ? "left-0 border-r border-gray-300" : ""
+                    } ${
+                      header.column.getIsPinned() === "right" ? "right-0 border-l border-gray-300" : ""
                     }`}
+                    style={{
+                      left: header.column.getIsPinned() === "left" ? `${header.index * 200}px` : undefined,
+                      right: header.column.getIsPinned() === "right" ? `${(table.getVisibleLeafColumns().length - 1 - header.index) * 200}px` : undefined,
+                      width: header.getSize(),
+                    }}
                   >
-                    <div className="flex items-center">
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                      {{
-                        asc: " 🔼",
-                        desc: " 🔽",
-                      }[header.column.getIsSorted() as string] ?? null}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                        {{
+                          asc: " 🔼",
+                          desc: " 🔽",
+                        }[header.column.getIsSorted() as string] ?? null}
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        {header.column.getCanPin() ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                header.column.pin("left");
+                              }}
+                              className="text-xs px-1 py-0.5 border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                              title="Pin Left"
+                            >
+                              📌
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                header.column.pin("right");
+                              }}
+                              className="text-xs px-1 py-0.5 border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                              title="Pin Right"
+                            >
+                              📍
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                header.column.pin(false);
+                              }}
+                              className="text-xs px-1 py-0.5 border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                              title="Unpin"
+                            >
+                              ➤
+                            </button>
+                          </>
+                        ) : null}
+                        {header.column.getCanResize() ? (
+                          <div
+                            className="w-2 h-4 cursor-col-resize bg-transparent hover:bg-gray-300 mx-1 -mr-2"
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </div>
                     </div>
                     {/* Column Filter */}
                     {header.column.getCanFilter() ? (
@@ -216,16 +283,31 @@ export function Table({ data }: TableProps) {
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className={
+                className={`${
                   row.index % 2 === 0
                     ? "bg-white"
                     : "bg-gray-50 hover:bg-gray-100"
-                }
+                } ${
+                  row.getVisibleCells().some(cell => cell.column.getIsPinned())
+                    ? "relative"
+                    : ""
+                }`}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${
+                      cell.column.getIsPinned() ? "sticky z-10 bg-white shadow-lg" : ""
+                    } ${
+                      cell.column.getIsPinned() === "left" ? "left-0 border-r border-gray-300" : ""
+                    } ${
+                      cell.column.getIsPinned() === "right" ? "right-0 border-l border-gray-300" : ""
+                    }`}
+                    style={{
+                      left: cell.column.getIsPinned() === "left" ? `${cell.column.getPinnedIndex() * 200}px` : undefined,
+                      right: cell.column.getIsPinned() === "right" ? `${(table.getVisibleLeafColumns().length - 1 - cell.column.getPinnedIndex()) * 200}px` : undefined,
+                      width: cell.column.getSize(),
+                    }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
@@ -234,6 +316,7 @@ export function Table({ data }: TableProps) {
             ))}
           </tbody>
         </table>
+       </div>
 
         {/* Pagination */}
         <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
@@ -301,17 +384,17 @@ export function Table({ data }: TableProps) {
           </div>
         </div>
 
-        {/* Applied Filters and Sorting Summary */}
+        {/* Applied Filters, Sorting, and Pinning Summary */}
         <div className="px-6 py-3 bg-gray-100 border-t border-gray-200">
           <div className="text-sm text-gray-700">
             {(() => {
               const summaries: string[] = [];
-
+        
               // Global filter summary
               if (globalFilter) {
                 summaries.push(`Global search: "${globalFilter}"`);
               }
-
+        
               // Column filters summary
               const columnFilterSummaries = columnFilters
                 .filter(
@@ -327,7 +410,7 @@ export function Table({ data }: TableProps) {
               if (columnFilterSummaries.length > 0) {
                 summaries.push(...columnFilterSummaries);
               }
-
+        
               // Sorting summary
               const sortingSummaries = sorting
                 .filter((sort) => sort.desc !== undefined)
@@ -338,11 +421,21 @@ export function Table({ data }: TableProps) {
               if (sortingSummaries.length > 0) {
                 summaries.push(...sortingSummaries);
               }
-
-              if (summaries.length === 0) {
-                return <span>No filters or sorting applied</span>;
+        
+              // Pinning summary
+              const leftPinned = table.getLeftLeafColumns().map(col => col.id);
+              const rightPinned = table.getRightLeafColumns().map(col => col.id);
+              if (leftPinned.length > 0) {
+                summaries.push(`Left pinned: ${leftPinned.join(', ')}`);
               }
-
+              if (rightPinned.length > 0) {
+                summaries.push(`Right pinned: ${rightPinned.join(', ')}`);
+              }
+        
+              if (summaries.length === 0) {
+                return <span>No filters, sorting, or pinning applied</span>;
+              }
+        
               return <span>Applied: {summaries.join(", ")}</span>;
             })()}
           </div>
