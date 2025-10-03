@@ -15,7 +15,6 @@ export const DragAlongCell = memo(function DragAlongCell({
   table,
 }: DragAlongCellProps) {
   const style: CSSProperties = {
-    position: "relative",
     width: cell.column.getSize(),
     whiteSpace: "nowrap",
   };

@@ -19,8 +19,13 @@ export function getPinnedOffset<TData>(
     return offset;
   }
   if (pinned === "right") {
+    // For right-pinned columns, compute offset from the right edge.
+    // We need to add up the sizes of the columns that are to the RIGHT of the current one,
+    // which requires iterating from the end of the right-pinned array backwards.
+    const rights = table.getRightLeafColumns();
     let offset = 0;
-    for (const c of table.getRightLeafColumns()) {
+    for (let i = rights.length - 1; i >= 0; i--) {
+      const c = rights[i];
       if (c.id === column.id) break;
       offset += c.getSize();
     }
