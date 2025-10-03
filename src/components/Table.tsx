@@ -21,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type {
   Cell,
+  Column,
   ColumnFiltersState,
   ColumnPinningState,
   ColumnResizeDirection,
@@ -40,7 +41,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import type { User } from "../lib/dummyData";
 
 const columnHelper = createColumnHelper<User>();
@@ -50,6 +51,10 @@ interface TableProps {
 }
 
 export function Table({ data }: TableProps) {
+  // Column sizing constants
+  const DEFAULT_COL_SIZE = 200;
+  const MIN_COL_SIZE = 60;
+  const MAX_COL_SIZE = 600;
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
@@ -69,64 +74,67 @@ export function Table({ data }: TableProps) {
     useState<ColumnResizeDirection>("ltr");
 
   // Columns definition
-  const columns = [
-    columnHelper.accessor("id", {
-      header: "ID",
-      cell: (info: any) => info.getValue(),
-      enableColumnFilter: false,
-    }),
-    columnHelper.accessor("firstName", {
-      header: "First Name",
-      cell: (info: any) => info.getValue(),
-    }),
-    columnHelper.accessor("lastName", {
-      header: "Last Name",
-      cell: (info: any) => info.getValue(),
-    }),
-    columnHelper.accessor("email", {
-      header: "Email",
-      cell: (info: any) => info.getValue(),
-    }),
-    columnHelper.accessor("phone", {
-      header: "Phone",
-      cell: (info: any) => info.getValue(),
-      filterFn: "includesString",
-      enableColumnFilter: true,
-    }),
-    columnHelper.accessor("department", {
-      header: "Department",
-      cell: (info: any) => info.getValue(),
-      filterFn: "includesString",
-      enableColumnFilter: true,
-    }),
-    columnHelper.accessor("salary", {
-      header: () => "Salary",
-      cell: (info: any) => `$${info.getValue().toLocaleString()}`,
-      enableColumnFilter: false,
-    }),
-    columnHelper.accessor("hireDate", {
-      header: () => "Hire Date",
-      cell: (info: any) => {
-        const date = info.getValue() as Date;
-        return new Intl.DateTimeFormat("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }).format(date);
-      },
-      enableColumnFilter: false,
-    }),
-    columnHelper.accessor("isActive", {
-      header: () => "Active",
-      cell: (info: any) => (
-        <span className={info.getValue() ? "text-green-600" : "text-red-600"}>
-          {info.getValue() ? "Yes" : "No"}
-        </span>
-      ),
-      filterFn: "equals",
-      enableColumnFilter: true,
-    }),
-  ];
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("id", {
+        header: "ID",
+        cell: (info: any) => info.getValue(),
+        enableColumnFilter: false,
+      }),
+      columnHelper.accessor("firstName", {
+        header: "First Name",
+        cell: (info: any) => info.getValue(),
+      }),
+      columnHelper.accessor("lastName", {
+        header: "Last Name",
+        cell: (info: any) => info.getValue(),
+      }),
+      columnHelper.accessor("email", {
+        header: "Email",
+        cell: (info: any) => info.getValue(),
+      }),
+      columnHelper.accessor("phone", {
+        header: "Phone",
+        cell: (info: any) => info.getValue(),
+        filterFn: "includesString",
+        enableColumnFilter: true,
+      }),
+      columnHelper.accessor("department", {
+        header: "Department",
+        cell: (info: any) => info.getValue(),
+        filterFn: "includesString",
+        enableColumnFilter: true,
+      }),
+      columnHelper.accessor("salary", {
+        header: () => "Salary",
+        cell: (info: any) => `$${info.getValue().toLocaleString()}`,
+        enableColumnFilter: false,
+      }),
+      columnHelper.accessor("hireDate", {
+        header: () => "Hire Date",
+        cell: (info: any) => {
+          const date = info.getValue() as Date;
+          return new Intl.DateTimeFormat("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }).format(date);
+        },
+        enableColumnFilter: false,
+      }),
+      columnHelper.accessor("isActive", {
+        header: () => "Active",
+        cell: (info: any) => (
+          <span className={info.getValue() ? "text-green-600" : "text-red-600"}>
+            {info.getValue() ? "Yes" : "No"}
+          </span>
+        ),
+        filterFn: "equals",
+        enableColumnFilter: true,
+      }),
+    ],
+    [],
+  );
 
   // Column order state for DnD
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
@@ -166,9 +174,9 @@ export function Table({ data }: TableProps) {
     columnResizeMode,
     columnResizeDirection,
     defaultColumn: {
-      size: 200,
-      minSize: 60,
-      maxSize: 600,
+      size: DEFAULT_COL_SIZE,
+      minSize: MIN_COL_SIZE,
+      maxSize: MAX_COL_SIZE,
     },
     debugTable: true,
   });
@@ -194,7 +202,7 @@ export function Table({ data }: TableProps) {
   };
 
   // DnD handlers and sensors
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
       setColumnOrder((prev) => {
@@ -203,7 +211,7 @@ export function Table({ data }: TableProps) {
         return arrayMove(prev, oldIndex, newIndex);
       });
     }
-  }
+  }, []);
 
   const sensors = useSensors(
     // Small activation constraints help avoid accidental sort clicks
@@ -215,11 +223,11 @@ export function Table({ data }: TableProps) {
   );
 
   // Header cell component with drag handle
-  const DraggableTableHeader = ({
+  const DraggableTableHeader = memo(function DraggableTableHeader({
     header,
   }: {
     header: Header<User, unknown>;
-  }) => {
+  }) {
     const { attributes, isDragging, listeners, setNodeRef, transform } =
       useSortable({
         id: header.column.id,
@@ -337,14 +345,14 @@ export function Table({ data }: TableProps) {
                   const current = header.getSize();
                   if (e.key === "ArrowLeft") {
                     e.preventDefault();
-                    const next = Math.max(current - step, 60);
+                    const next = Math.max(current - step, MIN_COL_SIZE);
                     table.setColumnSizing((sizing) => ({
                       ...sizing,
                       [header.column.id]: next,
                     }));
                   } else if (e.key === "ArrowRight") {
                     e.preventDefault();
-                    const next = Math.min(current + step, 600);
+                    const next = Math.min(current + step, MAX_COL_SIZE);
                     table.setColumnSizing((sizing) => ({
                       ...sizing,
                       [header.column.id]: next,
@@ -402,10 +410,14 @@ export function Table({ data }: TableProps) {
         ) : null}
       </th>
     );
-  };
+  });
 
   // Body cell — no sortable bindings to avoid duplicate droppable ids
-  const DragAlongCell = ({ cell }: { cell: Cell<User, unknown> }) => {
+  const DragAlongCell = memo(function DragAlongCell({
+    cell,
+  }: {
+    cell: Cell<User, unknown>;
+  }) {
     const style: CSSProperties = {
       position: "relative",
       width: cell.column.getSize(),
@@ -441,7 +453,7 @@ export function Table({ data }: TableProps) {
         {flexRender(cell.column.columnDef.cell, cell.getContext())}
       </td>
     );
-  };
+  });
 
   return (
     <div className="w-full">
